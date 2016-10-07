@@ -113,88 +113,88 @@ class BasicAmazonDeployHandler implements DeployHandler<BasicAmazonDeployDescrip
 
       String classicLinkVpcId = null
       List<String> classicLinkVpcSecurityGroups = null
-      if (!subnetType) {
-        def result = amazonEC2.describeVpcClassicLink()
-        classicLinkVpcId = result.vpcs.find { it.classicLinkEnabled }?.vpcId
-        if (classicLinkVpcId) {
-          Set<String> classicLinkGroupNames = []
-          classicLinkGroupNames.addAll(description.classicLinkVpcSecurityGroups ?: [])
-          if (deployDefaults.classicLinkSecurityGroupName) {
-            classicLinkGroupNames.addAll(deployDefaults.classicLinkSecurityGroupName)
-          }
-
-          // if we have provided groups and a vpcId, resolve them back to names to handle the case of cloning
-          // from a Server Group in a different region
-          if (description.classicLinkVpcId && description.classicLinkVpcSecurityGroups) {
-            def groupIds = classicLinkGroupNames.findAll { it.matches(~/sg-[0-9a-f]+/) } ?: []
-            classicLinkGroupNames.removeAll(groupIds)
-            if (groupIds) {
-              def describeSG = new DescribeSecurityGroupsRequest().withGroupIds(groupIds)
-              def provider = sourceRegionScopedProvider ?: regionScopedProvider
-              def resolvedNames = provider.amazonEC2.describeSecurityGroups(describeSG).securityGroups.findResults {
-                if (it.vpcId == description.classicLinkVpcId && groupIds.contains(it.groupId)) {
-                  return it.groupName
-                }
-                return null
-              } ?: []
-
-              if (resolvedNames.size() != groupIds.size()) {
-                throw new IllegalStateException("failed to look up classic link security groups, had $groupIds found $resolvedNames")
-              }
-              classicLinkGroupNames.addAll(resolvedNames)
-            }
-          }
-
-          if (deployDefaults.addAppGroupsToClassicLink) {
-            //if we cloned to a new cluster, don't bring along the old clusters groups
-            if (description.source) {
-              def srcName = Names.parseName(description.source.asgName)
-              boolean mismatch = false
-              if (srcName.app != description.application) {
-                classicLinkGroupNames.remove(srcName.app)
-                mismatch = true
-              }
-              if (srcName.stack && (mismatch || srcName.stack != description.stack)) {
-                classicLinkGroupNames.remove("${srcName.app}-${srcName.stack}".toString())
-                mismatch = true
-              }
-              if (srcName.detail && (mismatch || srcName.detail != description.freeFormDetails)) {
-                classicLinkGroupNames.remove("${srcName.app}-${srcName.stack ?: ''}-${srcName.detail}")
-              }
-            }
-            def groupNamesToLookUp = []
-            if (!classicLinkGroupNames.contains(description.application)) {
-              groupNamesToLookUp.add(description.application)
-            }
-            if (description.stack) {
-              String stackGroup = "${description.application}-${description.stack}"
-              if (!classicLinkGroupNames.contains(stackGroup)) {
-                groupNamesToLookUp.add(stackGroup)
-              }
-            }
-            if (description.freeFormDetails) {
-              String clusterGroup = "${description.application}-${description.stack ?: ''}-${description.freeFormDetails}"
-              if (!classicLinkGroupNames.contains(clusterGroup)) {
-                groupNamesToLookUp.add(clusterGroup)
-              }
-            }
-            if (groupNamesToLookUp && classicLinkGroupNames.size() < deployDefaults.maxClassicLinkSecurityGroups) {
-              def appGroups = regionScopedProvider.securityGroupService.getSecurityGroupIds(groupNamesToLookUp, classicLinkVpcId, false)
-              for (String name : groupNamesToLookUp) {
-                if (appGroups.containsKey(name)) {
-                  if (classicLinkGroupNames.size() < deployDefaults.maxClassicLinkSecurityGroups) {
-                    classicLinkGroupNames.add(name)
-                  } else {
-                    task.updateStatus(BASE_PHASE, "Not adding $name to classicLinkVpcSecurityGroups, already have $deployDefaults.maxClassicLinkSecurityGroups groups")
-                  }
-                }
-              }
-            }
-          }
-          classicLinkVpcSecurityGroups = classicLinkGroupNames.toList()
-          task.updateStatus(BASE_PHASE, "Attaching $classicLinkGroupNames as classicLinkVpcSecurityGroups")
-        }
-      }
+//      if (!subnetType) {
+//        def result = amazonEC2.describeVpcClassicLink()
+//        classicLinkVpcId = result.vpcs.find { it.classicLinkEnabled }?.vpcId
+//        if (classicLinkVpcId) {
+//          Set<String> classicLinkGroupNames = []
+//          classicLinkGroupNames.addAll(description.classicLinkVpcSecurityGroups ?: [])
+//          if (deployDefaults.classicLinkSecurityGroupName) {
+//            classicLinkGroupNames.addAll(deployDefaults.classicLinkSecurityGroupName)
+//          }
+//
+//          // if we have provided groups and a vpcId, resolve them back to names to handle the case of cloning
+//          // from a Server Group in a different region
+//          if (description.classicLinkVpcId && description.classicLinkVpcSecurityGroups) {
+//            def groupIds = classicLinkGroupNames.findAll { it.matches(~/sg-[0-9a-f]+/) } ?: []
+//            classicLinkGroupNames.removeAll(groupIds)
+//            if (groupIds) {
+//              def describeSG = new DescribeSecurityGroupsRequest().withGroupIds(groupIds)
+//              def provider = sourceRegionScopedProvider ?: regionScopedProvider
+//              def resolvedNames = provider.amazonEC2.describeSecurityGroups(describeSG).securityGroups.findResults {
+//                if (it.vpcId == description.classicLinkVpcId && groupIds.contains(it.groupId)) {
+//                  return it.groupName
+//                }
+//                return null
+//              } ?: []
+//
+//              if (resolvedNames.size() != groupIds.size()) {
+//                throw new IllegalStateException("failed to look up classic link security groups, had $groupIds found $resolvedNames")
+//              }
+//              classicLinkGroupNames.addAll(resolvedNames)
+//            }
+//          }
+//
+//          if (deployDefaults.addAppGroupsToClassicLink) {
+//            //if we cloned to a new cluster, don't bring along the old clusters groups
+//            if (description.source) {
+//              def srcName = Names.parseName(description.source.asgName)
+//              boolean mismatch = false
+//              if (srcName.app != description.application) {
+//                classicLinkGroupNames.remove(srcName.app)
+//                mismatch = true
+//              }
+//              if (srcName.stack && (mismatch || srcName.stack != description.stack)) {
+//                classicLinkGroupNames.remove("${srcName.app}-${srcName.stack}".toString())
+//                mismatch = true
+//              }
+//              if (srcName.detail && (mismatch || srcName.detail != description.freeFormDetails)) {
+//                classicLinkGroupNames.remove("${srcName.app}-${srcName.stack ?: ''}-${srcName.detail}")
+//              }
+//            }
+//            def groupNamesToLookUp = []
+//            if (!classicLinkGroupNames.contains(description.application)) {
+//              groupNamesToLookUp.add(description.application)
+//            }
+//            if (description.stack) {
+//              String stackGroup = "${description.application}-${description.stack}"
+//              if (!classicLinkGroupNames.contains(stackGroup)) {
+//                groupNamesToLookUp.add(stackGroup)
+//              }
+//            }
+//            if (description.freeFormDetails) {
+//              String clusterGroup = "${description.application}-${description.stack ?: ''}-${description.freeFormDetails}"
+//              if (!classicLinkGroupNames.contains(clusterGroup)) {
+//                groupNamesToLookUp.add(clusterGroup)
+//              }
+//            }
+//            if (groupNamesToLookUp && classicLinkGroupNames.size() < deployDefaults.maxClassicLinkSecurityGroups) {
+//              def appGroups = regionScopedProvider.securityGroupService.getSecurityGroupIds(groupNamesToLookUp, classicLinkVpcId, false)
+//              for (String name : groupNamesToLookUp) {
+//                if (appGroups.containsKey(name)) {
+//                  if (classicLinkGroupNames.size() < deployDefaults.maxClassicLinkSecurityGroups) {
+//                    classicLinkGroupNames.add(name)
+//                  } else {
+//                    task.updateStatus(BASE_PHASE, "Not adding $name to classicLinkVpcSecurityGroups, already have $deployDefaults.maxClassicLinkSecurityGroups groups")
+//                  }
+//                }
+//              }
+//            }
+//          }
+//          classicLinkVpcSecurityGroups = classicLinkGroupNames.toList()
+//          task.updateStatus(BASE_PHASE, "Attaching $classicLinkGroupNames as classicLinkVpcSecurityGroups")
+//        }
+//      }
 
       if (description.blockDevices == null) {
         description.blockDevices = BlockDeviceConfig.blockDevicesByInstanceType[description.instanceType]
